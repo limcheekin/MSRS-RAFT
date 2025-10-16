@@ -34,7 +34,7 @@ ragas>=0.1.0  # Optional, for advanced RAG metrics
 openai>=1.10.0  # For CoT generation with GPT-4
 
 # Data processing
-numpy>=1.24.0
+numpy==1.26.4
 pandas>=2.0.0
 
 # Utilities
