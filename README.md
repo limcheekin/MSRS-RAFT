@@ -4,6 +4,7 @@ Production-ready implementation of **Retrieval-Augmented Fine-Tuning (RAFT)** fo
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/limcheekin/MSRS-RAFT/blob/main/notebook.ipynb)
 
 ## 🎯 Key Features
 
@@ -110,8 +111,8 @@ RAFT addresses these challenges by training models to explicitly cite sources an
 ### Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/limcheekin/MSRS-RAFT
-cd MSRS-RAFT
+git clone <your-repo-url>
+cd raft-story-qa
 ```
 
 ### Step 2: Create Environment
