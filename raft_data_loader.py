@@ -138,12 +138,12 @@ class MSRSDataLoader:
                     id=item.get('id', f"{split}_{idx}"),
                     query=item['query'],
                     gold_documents=item['gold_documents'],
-                    answers=item['answers'],
+                    answers=item['answer'],
                     metadata={
                         'split': split,
                         'index': idx,
                         'num_gold_docs': len(item['gold_documents']),
-                        'num_answers': len(item['answers'])
+                        'num_answers': len(item['answer'])
                     }
                 )
                 examples.append(example)
