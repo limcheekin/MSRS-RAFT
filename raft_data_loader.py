@@ -70,7 +70,7 @@ class MSRSDataLoader:
         Load Story-QA dataset from HuggingFace
         
         Args:
-            split: Specific split to load (train/dev/test) or None for all
+            split: Specific split to load (train/validation/test) or None for all
             
         Returns:
             DatasetDict with requested splits
