@@ -103,7 +103,22 @@ class RAFTPipeline:
         if not self.data_loader._corpus:
             raise ValueError("Corpus is empty. Please ensure data loaded correctly.")
         
-        # Initialize retrieval system
+        # Determine index path
+        index_path = Path(save_path) if save_path else Path(self.config.retrieval.index_path) / "raft_index"
+        
+        # If an index file exists on disk, load it instead of rebuilding
+        # Matches the logic used in the "eval" branch (checks for index_path.faiss)
+        if index_path.exists() or Path(str(index_path) + ".faiss").exists():
+            self.logger.info(f"Existing index found at {index_path}, loading instead of rebuilding...")
+            self.retrieval_system = RetrievalSystem(
+                embedding_model=self.config.retrieval.embedding_model,
+                reranker_model=self.config.retrieval.reranker_model if self.config.retrieval.use_reranker else None,
+                index_path=str(index_path)
+            )
+            self.logger.info("✓ Loaded existing retrieval index")
+            return
+        
+        # Initialize retrieval system (no existing index found)
         self.retrieval_system = RetrievalSystem(
             embedding_model=self.config.retrieval.embedding_model,
             reranker_model=self.config.retrieval.reranker_model if self.config.retrieval.use_reranker else None,
@@ -121,11 +136,10 @@ class RAFTPipeline:
         # Build index
         self.logger.info(f"Building index for {len(documents)} documents...")
         
-        index_path = save_path or str(Path(self.config.retrieval.index_path) / "raft_index")
         self.retrieval_system.build_index(
             documents,
             batch_size=self.config.retrieval.batch_size,
-            save_path=index_path
+            save_path=str(index_path)
         )
         
         self.logger.info(f"✓ Index built and saved to {index_path}")
