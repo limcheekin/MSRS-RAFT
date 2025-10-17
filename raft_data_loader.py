@@ -30,7 +30,6 @@ class StoryQAExample:
 @dataclass
 class Chapter:
     """Container for story chapter"""
-    doc_id: str
     story_id: str
     chapter_index: int
     text: str
@@ -210,23 +209,19 @@ class MSRSDataLoader:
             
             logger.info(f"Loaded corpus dataset with {len(corpus_dataset['corpus'])} items")
             
-            for item in tqdm(corpus_dataset['corpus'], desc="Loading corpus"):
-                doc_id = item['doc_id']
-                
+            for item in tqdm(corpus_dataset['corpus'], desc="Loading corpus"):              
                 # Parse story_id and chapter_index from doc_id
-                parts = doc_id.rsplit('_', 1)
-                story_id = parts[0]
-                chapter_index = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
+                story_id = item['id']
+                chapter_index = 0
                 
                 chapter = Chapter(
-                    doc_id=doc_id,
                     story_id=story_id,
                     chapter_index=chapter_index,
                     text=item['text'],
                     token_length=len(item['text'].split()),
                     metadata=item.get('metadata', {})
                 )
-                corpus[doc_id] = chapter
+                corpus[story_id] = chapter
             
             logger.info(f"Successfully loaded {len(corpus)} chapters from HuggingFace")
             return corpus
@@ -252,7 +247,7 @@ class MSRSDataLoader:
                     for line in tqdm(f, desc="Loading corpus"):
                         item = json.loads(line)
                         chapter = self._parse_chapter_dict(item)
-                        corpus[chapter.doc_id] = chapter
+                        corpus[chapter.story_id] = chapter
             else:
                 with open(path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
@@ -260,35 +255,31 @@ class MSRSDataLoader:
                         data = list(data.values())
                     for item in tqdm(data, desc="Loading corpus"):
                         chapter = self._parse_chapter_dict(item)
-                        corpus[chapter.doc_id] = chapter
+                        corpus[chapter.story_id] = chapter
         
         elif path.is_dir():
             # Directory of text files
             for file_path in tqdm(list(path.glob('**/*.txt')), desc="Loading corpus"):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     text = f.read()
-                    doc_id = file_path.stem
-                    parts = doc_id.rsplit('_', 1)
+                    story_id = file_path.stem
                     chapter = Chapter(
-                        doc_id=doc_id,
-                        story_id=parts[0],
-                        chapter_index=int(parts[1]) if len(parts) > 1 else 0,
+                        story_id=story_id,
+                        chapter_index=0,
                         text=text,
                         token_length=len(text.split())
                     )
-                    corpus[doc_id] = chapter
+                    corpus[story_id] = chapter
         
         return corpus
     
     def _parse_chapter_dict(self, item: Dict) -> Chapter:
         """Parse chapter from dictionary"""
-        doc_id = item['doc_id']
-        parts = doc_id.rsplit('_', 1)
+        story_id = item['id']
         
         return Chapter(
-            doc_id=doc_id,
-            story_id=item.get('story_id', parts[0]),
-            chapter_index=item.get('chapter_index', int(parts[1]) if len(parts) > 1 else 0),
+            story_id=story_id,
+            chapter_index=0,
             text=item['text'],
             token_length=item.get('token_length', len(item['text'].split())),
             metadata=item.get('metadata')
@@ -305,12 +296,12 @@ class MSRSDataLoader:
         for story_id in self._chapter_index:
             self._chapter_index[story_id].sort(key=lambda c: c.chapter_index)
     
-    def get_chapters_by_ids(self, doc_ids: List[str]) -> List[Chapter]:
+    def get_chapters_by_ids(self, story_ids: List[str]) -> List[Chapter]:
         """
-        Get chapters by document IDs
+        Get chapters by story IDs
         
         Args:
-            doc_ids: List of document IDs
+            story_ids: List of story IDs
             
         Returns:
             List of Chapter objects
@@ -318,11 +309,11 @@ class MSRSDataLoader:
         chapters = []
         missing = []
         
-        for doc_id in doc_ids:
-            if doc_id in self._corpus:
-                chapters.append(self._corpus[doc_id])
+        for story_id in story_ids:
+            if story_id in self._corpus:
+                chapters.append(self._corpus[story_id])
             else:
-                missing.append(doc_id)
+                missing.append(story_id)
         
         if missing:
             logger.warning(f"Missing {len(missing)} chapters: {missing[:5]}...")
@@ -386,7 +377,6 @@ class MSRSDataLoader:
         corpus_list = []
         for chapter in self._corpus.values():
             corpus_list.append({
-                'doc_id': chapter.doc_id,
                 'story_id': chapter.story_id,
                 'chapter_index': chapter.chapter_index,
                 'text': chapter.text,
