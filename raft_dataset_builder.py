@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 import openai
+import os
 from tqdm import tqdm
 
 logger = logging.getLogger("RAFT.DatasetBuilder")
@@ -125,9 +126,17 @@ class CoTGenerator:
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        
+        self._api_key = api_key
+
+        # Prefer setting env var (compatible with openai>=1.0.0 and older clients)
         if api_key:
-            openai.api_key = api_key
+            os.environ.setdefault("OPENAI_API_KEY", api_key)
+            try:
+                # older openai versions accepted assignment
+                openai.api_key = api_key
+            except Exception:
+                # newer openai may not support assigning api_key attribute
+                pass
         
         logger.info(f"Initialized CoT generator with model: {model}")
     
@@ -151,8 +160,40 @@ class CoTGenerator:
         # Build prompt
         prompt = self._build_prompt(query, oracle_texts, reference_answer)
         
+        # Try legacy API first (openai.ChatCompletion.create)
         try:
-            response = openai.ChatCompletion.create(
+            if hasattr(openai, "ChatCompletion"):
+                response = openai.ChatCompletion.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": self._get_system_prompt()},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens
+                )
+
+                content = response.choices[0].message.content.strip()
+
+                reasoning, answer = self._parse_response(content)
+                return reasoning, answer
+
+        except Exception as e:
+            # If the older ChatCompletion API exists but fails, fall through to try the
+            # new OpenAI client. Log at debug to avoid spamming users with expected
+            # deprecation messages.
+            logger.debug(f"Legacy ChatCompletion failed or unavailable: {e}")
+
+        # Fallback: use the new OpenAI client (openai.OpenAI) introduced in openai-python >=1.0.0
+        try:
+            OpenAI = getattr(openai, "OpenAI", None)
+            if OpenAI is None:
+                # Try direct import as a last resort
+                from openai import OpenAI
+
+            client = OpenAI(api_key=self._api_key) if self._api_key else OpenAI()
+
+            response = client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self._get_system_prompt()},
@@ -161,16 +202,25 @@ class CoTGenerator:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
-            
-            content = response.choices[0].message.content.strip()
-            
-            # Parse reasoning and answer
+
+            # Response shape should be similar; extract content
+            # New client returns objects with .choices[0].message.content
+            content = None
+            try:
+                content = response.choices[0].message.content.strip()
+            except Exception:
+                # Some versions may serialize differently
+                try:
+                    content = response.choices[0]["message"]["content"].strip()
+                except Exception:
+                    # Fallback to stringifying entire response
+                    content = str(response)
+
             reasoning, answer = self._parse_response(content)
-            
             return reasoning, answer
-            
+
         except Exception as e:
-            logger.error(f"Failed to generate CoT: {str(e)}")
+            logger.error(f"Failed to generate CoT with OpenAI client: {str(e)}")
             raise
     
     def _get_system_prompt(self) -> str:
