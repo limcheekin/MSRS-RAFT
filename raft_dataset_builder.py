@@ -612,7 +612,7 @@ def prepare_examples_from_loader(
             continue
         
         oracle_docs = [
-            (chapter.doc_id, chapter.text)
+            (chapter.story_id, chapter.text)
             for chapter in oracle_chapters
         ]
         
