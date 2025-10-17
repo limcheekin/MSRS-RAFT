@@ -14,7 +14,7 @@ training:
 raft_data:
   oracle_percentage: 0.8
   num_distractors: 4
-  judge_model: "gpt-4-turbo-preview"
+  judge_model: "gpt-4.1"
 
 retrieval:
   embedding_model: "BAAI/bge-m3"
@@ -28,4 +28,4 @@ evaluation:
 
 system:
   project_name: "MSRS-RAFT"
-  use_wandb: false  # Set to true for experiment tracking
+  use_wandb: true  # Set to true for experiment tracking
