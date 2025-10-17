@@ -94,8 +94,14 @@ class RAFTPipeline:
         self.logger.info("STEP 2: BUILDING RETRIEVAL INDEX")
         self.logger.info("="*60)
         
+        # Auto-load data if not already loaded
         if not self.data_loader or not self.data_loader._corpus:
-            raise ValueError("Must load data first (step1_load_data)")
+            self.logger.info("Data not loaded yet, loading first...")
+            self.step1_load_data()
+        
+        # Check again after auto-load attempt
+        if not self.data_loader._corpus:
+            raise ValueError("Corpus is empty. Please ensure data loaded correctly.")
         
         # Initialize retrieval system
         self.retrieval_system = RetrievalSystem(
@@ -135,8 +141,15 @@ class RAFTPipeline:
         self.logger.info(f"STEP 3: BUILDING RAFT DATASET ({split} split)")
         self.logger.info("="*60)
         
+        # Auto-load data if needed
+        if not self.data_loader:
+            self.logger.info("Data not loaded yet, loading first...")
+            self.step1_load_data()
+        
+        # Auto-build index if needed
         if not self.retrieval_system:
-            raise ValueError("Must build index first (step2_build_index)")
+            self.logger.info("Retrieval index not built yet, building first...")
+            self.step2_build_index()
         
         # Initialize CoT generator
         cot_generator = CoTGenerator(
