@@ -454,12 +454,20 @@ def main():
             pipeline.step1_load_data()
         
         elif args.step == "index":
-            pipeline.step1_load_data()
+            # Load data first if not already loaded
+            if pipeline.data_loader is None:
+                logger.info("Data not loaded, loading first...")
+                pipeline.step1_load_data()
             pipeline.step2_build_index()
         
         elif args.step == "dataset":
-            pipeline.step1_load_data()
-            pipeline.step2_build_index()
+            # Load data and build index first if needed
+            if pipeline.data_loader is None:
+                logger.info("Data not loaded, loading first...")
+                pipeline.step1_load_data()
+            if pipeline.retrieval_system is None:
+                logger.info("Index not built, building first...")
+                pipeline.step2_build_index()
             pipeline.step3_build_raft_dataset(
                 split="train",
                 max_examples=args.train_max_examples,
@@ -480,7 +488,11 @@ def main():
             pipeline.step5_save_model()
         
         elif args.step == "eval":
-            pipeline.step1_load_data()
+            # Load data first if needed
+            if pipeline.data_loader is None:
+                logger.info("Data not loaded, loading first...")
+                pipeline.step1_load_data()
+            
             if not args.model_path:
                 # Try to use default trained model path
                 model_path = str(Path(config.training.output_dir) / "final_model")
@@ -490,15 +502,17 @@ def main():
             else:
                 model_path = args.model_path
             
-            # Load index if available
+            # Load or build index if available
             index_path = str(Path(config.retrieval.index_path) / "raft_index")
             if Path(index_path + ".faiss").exists():
+                logger.info("Loading existing index...")
                 pipeline.retrieval_system = RetrievalSystem(
                     embedding_model=config.retrieval.embedding_model,
                     reranker_model=config.retrieval.reranker_model if config.retrieval.use_reranker else None,
                     index_path=index_path
                 )
             else:
+                logger.info("Index not found, building first...")
                 pipeline.step2_build_index()
             
             pipeline.step6_evaluate(model_path=model_path)
