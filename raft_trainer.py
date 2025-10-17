@@ -11,6 +11,7 @@ import json
 
 import torch
 from datasets import Dataset
+from unsloth import FastLanguageModel
 from transformers import TrainingArguments, TrainerCallback
 from trl import SFTTrainer
 import wandb
@@ -56,8 +57,6 @@ class RAFTTrainer:
     def load_model(self):
         """Load model and tokenizer with Unsloth"""
         try:
-            from unsloth import FastLanguageModel
-            
             logger.info(f"Loading model: {self.config.model.model_name}")
             
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
@@ -83,8 +82,6 @@ class RAFTTrainer:
     def _apply_lora(self):
         """Apply LoRA adapters"""
         try:
-            from unsloth import FastLanguageModel
-            
             logger.info("Applying LoRA adapters")
             
             self.model = FastLanguageModel.get_peft_model(
@@ -492,8 +489,6 @@ class RAFTTrainer:
     def load_model(self):
         """Load model and tokenizer with Unsloth"""
         try:
-            from unsloth import FastLanguageModel
-            
             logger.info(f"Loading model: {self.config.model.model_name}")
             
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
@@ -519,8 +514,6 @@ class RAFTTrainer:
     def _apply_lora(self):
         """Apply LoRA adapters"""
         try:
-            from unsloth import FastLanguageModel
-            
             logger.info("Applying LoRA adapters")
             
             self.model = FastLanguageModel.get_peft_model(
