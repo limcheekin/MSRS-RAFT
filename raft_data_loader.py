@@ -70,7 +70,7 @@ class MSRSDataLoader:
         Load Story-QA dataset from HuggingFace
         
         Args:
-            split: Specific split to load (train/validation/test) or None for all
+            split: Specific split to load (train/dev/test) or None for all
             
         Returns:
             DatasetDict with requested splits
@@ -138,12 +138,12 @@ class MSRSDataLoader:
                     id=item.get('id', f"{split}_{idx}"),
                     query=item['query'],
                     gold_documents=item['gold_documents'],
-                    answers=item['answer'],
+                    answers=item['answers'],
                     metadata={
                         'split': split,
                         'index': idx,
                         'num_gold_docs': len(item['gold_documents']),
-                        'num_answers': len(item['answer'])
+                        'num_answers': len(item['answers'])
                     }
                 )
                 examples.append(example)
@@ -201,11 +201,14 @@ class MSRSDataLoader:
         
         try:
             # Try loading corpus configuration from MSRS
+            logger.info("Attempting to load story-corpus from HuggingFace...")
             corpus_dataset = load_dataset(
                 self.dataset_name,
                 "story-corpus",
                 cache_dir=self.cache_dir
             )
+            
+            logger.info(f"Loaded corpus dataset with {len(corpus_dataset['corpus'])} items")
             
             for item in tqdm(corpus_dataset['corpus'], desc="Loading corpus"):
                 doc_id = item['doc_id']
@@ -213,7 +216,7 @@ class MSRSDataLoader:
                 # Parse story_id and chapter_index from doc_id
                 parts = doc_id.rsplit('_', 1)
                 story_id = parts[0]
-                chapter_index = int(parts[1]) if len(parts) > 1 else 0
+                chapter_index = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
                 
                 chapter = Chapter(
                     doc_id=doc_id,
@@ -225,11 +228,13 @@ class MSRSDataLoader:
                 )
                 corpus[doc_id] = chapter
             
+            logger.info(f"Successfully loaded {len(corpus)} chapters from HuggingFace")
             return corpus
             
         except Exception as e:
-            logger.warning(f"Could not load from HF corpus config: {str(e)}")
-            logger.info("You may need to provide corpus manually via corpus_path parameter")
+            logger.warning(f"Could not load from HF story-corpus config: {str(e)}")
+            logger.info("The corpus might not be available in the expected format")
+            logger.info("Please download it manually from: https://huggingface.co/datasets/yale-nlp/MSRS/viewer/story-corpus")
             return {}
     
     def _load_corpus_from_file(self, corpus_path: str) -> Dict[str, Chapter]:
