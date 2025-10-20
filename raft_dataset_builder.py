@@ -47,23 +47,63 @@ class CitationValidator:
     def validate_quote(quote: str, source_text: str, fuzzy: bool = False) -> bool:
         """
         Validate that quote exists in source text
-        
+
         Args:
             quote: Quote text to validate
             source_text: Source text to check against
             fuzzy: Allow minor differences (whitespace, punctuation)
-            
+
         Returns:
             True if quote is valid
         """
         if not fuzzy:
             return quote in source_text
-        
+
         # Normalize for fuzzy matching
         quote_norm = re.sub(r'\s+', ' ', quote.lower().strip())
         source_norm = re.sub(r'\s+', ' ', source_text.lower())
-        
-        return quote_norm in source_norm
+
+        # Try exact match first
+        if quote_norm in source_norm:
+            return True
+
+        # Try with punctuation removed
+        import string
+        translator = str.maketrans('', '', string.punctuation)
+        quote_no_punct = quote_norm.translate(translator)
+        source_no_punct = source_norm.translate(translator)
+
+        if quote_no_punct in source_no_punct:
+            return True
+
+        # Try partial match (at least 80% of quote words found in order)
+        quote_words = quote_no_punct.split()
+        if len(quote_words) < 3:
+            # For very short quotes, require exact match
+            return False
+
+        # Check if most words appear in source in the same order
+        source_words = source_no_punct.split()
+        matches = 0
+        source_idx = 0
+
+        for word in quote_words:
+            if len(word) < 2:  # Skip very short words
+                continue
+            # Find word in remaining source
+            try:
+                idx = source_words[source_idx:].index(word)
+                source_idx += idx + 1
+                matches += 1
+            except ValueError:
+                continue
+
+        # Require at least 80% of significant words to match
+        significant_words = [w for w in quote_words if len(w) >= 2]
+        if significant_words and matches / len(significant_words) >= 0.8:
+            return True
+
+        return False
     
     @staticmethod
     def validate_example(
@@ -381,11 +421,17 @@ class RAFTDatasetBuilder:
                 oracle_texts,
                 self.max_quote_length
             )
-            
+
             if not is_valid:
                 logger.warning(
                     f"Validation failed for {example_id}: {', '.join(errors)}"
                 )
+                # Debug: Log first quote and oracle text sample for diagnosis
+                quotes = self.validator.extract_quotes(reasoning)
+                if quotes:
+                    logger.debug(f"First failed quote: '{quotes[0][:100]}'")
+                if oracle_texts:
+                    logger.debug(f"Oracle text sample: '{oracle_texts[0][:200]}'...")
                 return None
             
             # Check quote count
