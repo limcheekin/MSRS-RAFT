@@ -122,7 +122,7 @@ class MSRSDataLoader:
         
         try:
             if split == 'dev':
-                split = 'validation
+                split = 'validation'
             dataset_split = self._dataset[split]
             examples = []
             
