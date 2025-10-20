@@ -431,6 +431,13 @@ def main():
         help="Pipeline step to run"
     )
     parser.add_argument(
+        "--split",
+        type=str,
+        choices=["train", "dev", "validation", "test"],
+        default="train",
+        help="Dataset split to build (for --step dataset)"
+    )
+    parser.add_argument(
         "--train-max-examples",
         type=int,
         help="Max training examples (for testing)"
@@ -495,9 +502,21 @@ def main():
             if pipeline.retrieval_system is None:
                 logger.info("Index not built, building first...")
                 pipeline.step2_build_index()
+
+            # Normalize split name (validation -> dev)
+            split = args.split
+            if split == "validation":
+                split = "dev"
+
+            # Determine max_examples based on split
+            if split == "train":
+                max_examples = args.train_max_examples
+            else:
+                max_examples = args.eval_max_examples
+
             pipeline.step3_build_raft_dataset(
-                split="train",
-                max_examples=args.train_max_examples,
+                split=split,
+                max_examples=max_examples,
                 openai_api_key=args.openai_api_key
             )
         
