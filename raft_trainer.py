@@ -747,7 +747,6 @@ class RAFTTrainer:
         # Initialize trainer
         self.trainer = SFTTrainer(
             model=self.model,
-            tokenizer=self.tokenizer,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             args=training_args,
