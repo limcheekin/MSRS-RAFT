@@ -183,7 +183,11 @@ class RAFTTrainer:
     
     def prepare_training_args(self) -> SFTConfig:
         """Prepare training arguments"""
-        
+
+        # Debug: Check tokenizer tokens
+        logger.info(f"Tokenizer eos_token: {repr(self.tokenizer.eos_token)}")
+        logger.info(f"Tokenizer pad_token: {repr(self.tokenizer.pad_token)}")
+
         # Ensure save_steps is a multiple of eval_steps when load_best_model_at_end is True
         save_steps = self.config.training.save_steps
         eval_steps = self.config.training.eval_steps
@@ -276,9 +280,8 @@ class RAFTTrainer:
             # SFT-specific parameters
             max_length=self.config.model.max_seq_length,
             packing=False,
-            # Explicitly set to tokenizer's actual tokens to avoid validation errors
-            eos_token=self.tokenizer.eos_token,
-            pad_token=self.tokenizer.pad_token,
+            # Set tokens based on tokenizer - use actual values if available, otherwise don't set
+            dataset_text_field=None,  # We use formatting_func instead
         )
         
         return args
@@ -330,10 +333,10 @@ class RAFTTrainer:
         # Initialize trainer
         self.trainer = SFTTrainer(
             model=self.model,
+            tokenizer=self.tokenizer,  # Use tokenizer parameter instead of processing_class
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            processing_class=self.tokenizer,  # Pass tokenizer so SFTTrainer can use its tokens
             formatting_func=self.formatting_func,
             callbacks=callbacks or [],
         )
