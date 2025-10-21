@@ -12,6 +12,9 @@ import json
 import torch
 from datasets import Dataset
 from transformers import TrainerCallback
+# IMPORTANT: Import unsloth BEFORE trl to avoid token patching issues
+# See: https://github.com/unslothai/unsloth/issues/2797
+from unsloth import FastLanguageModel
 from trl import SFTTrainer, SFTConfig
 import wandb
 
@@ -56,8 +59,6 @@ class RAFTTrainer:
     def load_model(self):
         """Load model and tokenizer with Unsloth"""
         try:
-            from unsloth import FastLanguageModel
-            
             logger.info(f"Loading model: {self.config.model.model_name}")
             
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
@@ -83,8 +84,6 @@ class RAFTTrainer:
     def _apply_lora(self):
         """Apply LoRA adapters"""
         try:
-            from unsloth import FastLanguageModel
-            
             logger.info("Applying LoRA adapters")
             
             self.model = FastLanguageModel.get_peft_model(
@@ -285,7 +284,11 @@ class RAFTTrainer:
             eos_token=self.tokenizer.eos_token if self.tokenizer.eos_token else None,
             pad_token=self.tokenizer.pad_token if self.tokenizer.pad_token else None,
         )
-        
+
+        # Debug: Check what was actually set in the config
+        logger.info(f"SFTConfig eos_token: {repr(args.eos_token)}")
+        logger.info(f"SFTConfig pad_token: {repr(args.pad_token)}")
+
         return args
     
     def formatting_func(self, examples: Dict[str, List]) -> List[str]:
