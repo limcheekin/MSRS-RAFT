@@ -247,7 +247,7 @@ class RAFTTrainer:
             logging_dir=os.path.join(self.config.training.output_dir, "logs"),
             
             # Evaluation
-            evaluation_strategy=self.config.training.eval_strategy,
+            #evaluation_strategy=self.config.training.eval_strategy,
             eval_steps=eval_steps if self.config.training.eval_strategy != "no" else None,
             
             # Saving
