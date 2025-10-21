@@ -28,4 +28,4 @@ evaluation:
 
 system:
   project_name: "MSRS-RAFT"
-  use_wandb: true  # Set to true for experiment tracking
+  use_wandb: false  # Set to true for experiment tracking
