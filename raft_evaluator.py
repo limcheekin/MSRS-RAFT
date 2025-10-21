@@ -8,12 +8,18 @@ from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 import json
 from pathlib import Path
+import os
 
 import numpy as np
 from tqdm import tqdm
 from rouge_score import rouge_scorer
 from bert_score import score as bert_score
 import torch
+
+try:
+    import openai
+except ImportError:
+    openai = None
 
 logger = logging.getLogger("RAFT.Evaluator")
 
@@ -104,16 +110,39 @@ class RetrievalMetrics:
 
 class GenerationMetrics:
     """Compute generation quality metrics"""
-    
-    def __init__(self, llm_judge_model: Optional[str] = None):
+
+    def __init__(self, llm_judge_model: Optional[str] = None, api_key: Optional[str] = None):
         """
         Initialize generation metrics
-        
+
         Args:
             llm_judge_model: Optional LLM model for judge-based metrics
+            api_key: Optional OpenAI API key (or from env)
         """
         self.llm_judge_model = llm_judge_model
         self.rouge_scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
+        self._api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self._openai_client = None
+
+        # Initialize OpenAI client if LLM judge is enabled
+        if self.llm_judge_model and openai:
+            try:
+                # Try new OpenAI client (openai>=1.0.0)
+                OpenAI = getattr(openai, "OpenAI", None)
+                if OpenAI:
+                    self._openai_client = OpenAI(api_key=self._api_key) if self._api_key else OpenAI()
+                    logger.info(f"Initialized OpenAI client for LLM judge: {self.llm_judge_model}")
+                else:
+                    # Fallback to legacy API
+                    if self._api_key:
+                        openai.api_key = self._api_key
+                    logger.info(f"Using legacy OpenAI API for LLM judge: {self.llm_judge_model}")
+            except Exception as e:
+                logger.warning(f"Failed to initialize OpenAI client: {e}. LLM judge will use heuristics.")
+                self.llm_judge_model = None
+        elif self.llm_judge_model and not openai:
+            logger.warning("OpenAI package not installed. LLM judge will use heuristics.")
+            self.llm_judge_model = None
     
     def compute_rouge_l(
         self,
@@ -257,10 +286,68 @@ class GenerationMetrics:
         contexts: List[str]
     ) -> float:
         """LLM-based faithfulness evaluation"""
-        # Placeholder for LLM judge implementation
-        # Would call OpenAI/Anthropic API to judge faithfulness
-        logger.warning("LLM judge not implemented, using heuristic")
-        return self._faithfulness_heuristic(generated, contexts)
+        if not self._openai_client and not hasattr(openai, "ChatCompletion"):
+            logger.warning("LLM judge not available, using heuristic")
+            return self._faithfulness_heuristic(generated, contexts)
+
+        # Build evaluation prompt
+        context_str = "\n\n".join([f"[Context {i+1}]\n{ctx}" for i, ctx in enumerate(contexts)])
+
+        prompt = f"""Evaluate whether the following answer is faithful to (grounded in) the provided contexts.
+
+Contexts:
+{context_str}
+
+Generated Answer:
+{generated}
+
+Instructions:
+1. Check if all claims in the answer can be verified from the contexts
+2. Identify any hallucinations or unsupported statements
+3. Rate faithfulness on a scale of 0.0 to 1.0 where:
+   - 1.0 = All statements are fully supported by the contexts
+   - 0.5 = Some statements are supported, some are not
+   - 0.0 = Answer contains mostly unsupported or contradictory information
+
+Respond with ONLY a number between 0.0 and 1.0, nothing else."""
+
+        try:
+            # Try new OpenAI client first
+            if self._openai_client:
+                response = self._openai_client.chat.completions.create(
+                    model=self.llm_judge_model,
+                    messages=[
+                        {"role": "system", "content": "You are an expert evaluator assessing the faithfulness of generated answers to source contexts."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.0,
+                    max_tokens=10
+                )
+                score_text = response.choices[0].message.content.strip()
+            # Fallback to legacy API
+            elif hasattr(openai, "ChatCompletion"):
+                response = openai.ChatCompletion.create(
+                    model=self.llm_judge_model,
+                    messages=[
+                        {"role": "system", "content": "You are an expert evaluator assessing the faithfulness of generated answers to source contexts."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.0,
+                    max_tokens=10
+                )
+                score_text = response.choices[0].message.content.strip()
+            else:
+                raise ValueError("No OpenAI API available")
+
+            # Parse score
+            score = float(score_text)
+            # Clamp to [0, 1]
+            score = max(0.0, min(1.0, score))
+            return score
+
+        except Exception as e:
+            logger.warning(f"LLM judge failed: {e}. Using heuristic fallback.")
+            return self._faithfulness_heuristic(generated, contexts)
     
     def compute_answer_relevance(
         self,
@@ -305,8 +392,66 @@ class GenerationMetrics:
         query: str
     ) -> float:
         """LLM-based relevance evaluation"""
-        logger.warning("LLM judge not implemented, using heuristic")
-        return self._relevance_heuristic(generated, query)
+        if not self._openai_client and not hasattr(openai, "ChatCompletion"):
+            logger.warning("LLM judge not available, using heuristic")
+            return self._relevance_heuristic(generated, query)
+
+        # Build evaluation prompt
+        prompt = f"""Evaluate whether the following answer is relevant to the given question.
+
+Question:
+{query}
+
+Generated Answer:
+{generated}
+
+Instructions:
+1. Check if the answer addresses the question asked
+2. Assess whether the answer provides useful information for the question
+3. Rate relevance on a scale of 0.0 to 1.0 where:
+   - 1.0 = Answer directly and completely addresses the question
+   - 0.5 = Answer partially addresses the question
+   - 0.0 = Answer is completely irrelevant to the question
+
+Respond with ONLY a number between 0.0 and 1.0, nothing else."""
+
+        try:
+            # Try new OpenAI client first
+            if self._openai_client:
+                response = self._openai_client.chat.completions.create(
+                    model=self.llm_judge_model,
+                    messages=[
+                        {"role": "system", "content": "You are an expert evaluator assessing the relevance of generated answers to questions."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.0,
+                    max_tokens=10
+                )
+                score_text = response.choices[0].message.content.strip()
+            # Fallback to legacy API
+            elif hasattr(openai, "ChatCompletion"):
+                response = openai.ChatCompletion.create(
+                    model=self.llm_judge_model,
+                    messages=[
+                        {"role": "system", "content": "You are an expert evaluator assessing the relevance of generated answers to questions."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.0,
+                    max_tokens=10
+                )
+                score_text = response.choices[0].message.content.strip()
+            else:
+                raise ValueError("No OpenAI API available")
+
+            # Parse score
+            score = float(score_text)
+            # Clamp to [0, 1]
+            score = max(0.0, min(1.0, score))
+            return score
+
+        except Exception as e:
+            logger.warning(f"LLM judge failed: {e}. Using heuristic fallback.")
+            return self._relevance_heuristic(generated, query)
 
 
 class RAFTEvaluator:
@@ -317,27 +462,30 @@ class RAFTEvaluator:
         config,
         retrieval_system=None,
         model=None,
-        tokenizer=None
+        tokenizer=None,
+        openai_api_key: Optional[str] = None
     ):
         """
         Initialize RAFT evaluator
-        
+
         Args:
             config: RAFTConfig object
             retrieval_system: Optional RetrievalSystem for retrieval evaluation
             model: Optional model for generation
             tokenizer: Optional tokenizer for generation
+            openai_api_key: Optional OpenAI API key for LLM judge
         """
         self.config = config
         self.retrieval_system = retrieval_system
         self.model = model
         self.tokenizer = tokenizer
-        
+
         self.retrieval_metrics = RetrievalMetrics()
         self.generation_metrics = GenerationMetrics(
-            llm_judge_model=config.evaluation.ragas_llm if config.evaluation.compute_faithfulness else None
+            llm_judge_model=config.evaluation.ragas_llm if config.evaluation.compute_faithfulness else None,
+            api_key=openai_api_key
         )
-        
+
         logger.info("Initialized RAFT Evaluator")
     
     def evaluate_example(

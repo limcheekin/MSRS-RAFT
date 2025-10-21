@@ -281,7 +281,8 @@ class RAFTPipeline:
         self,
         test_split: str = "test",
         model_path: Optional[str] = None,
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
+        openai_api_key: Optional[str] = None
     ) -> Dict[str, Any]:
         """Step 6: Evaluate the model"""
         self.logger.info("\n" + "="*60)
@@ -314,7 +315,8 @@ class RAFTPipeline:
             config=self.config,
             retrieval_system=self.retrieval_system,
             model=model,
-            tokenizer=tokenizer
+            tokenizer=tokenizer,
+            openai_api_key=openai_api_key
         )
         
         # Prepare test examples
@@ -400,7 +402,7 @@ class RAFTPipeline:
                 self.step5_save_model()
             
             # Step 6: Evaluate
-            metrics = self.step6_evaluate(test_split="test")
+            metrics = self.step6_evaluate(test_split="test", openai_api_key=openai_api_key)
             
             self.logger.info("\n" + "="*80)
             self.logger.info("PIPELINE COMPLETE!")
