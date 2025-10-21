@@ -113,23 +113,27 @@ class RAFTTrainer:
     
     def _setup_chat_template(self):
         """Setup chat template for tokenizer"""
-        if self.tokenizer.chat_template is None:
-            # Default chat template for Qwen3
-            self.tokenizer.chat_template = (
-                "{% for message in messages %}"
-                "{% if message['role'] == 'system' %}"
-                "<|im_start|>system\n{{ message['content'] }}<|im_end|>\n"
-                "{% elif message['role'] == 'user' %}"
-                "<|im_start|>user\n{{ message['content'] }}<|im_end|>\n"
-                "{% elif message['role'] == 'assistant' %}"
-                "<|im_start|>assistant\n{{ message['content'] }}<|im_end|>\n"
-                "{% endif %}"
-                "{% endfor %}"
-                "{% if add_generation_prompt %}"
-                "<|im_start|>assistant\n"
-                "{% endif %}"
-            )
-        
+        # Always set our custom chat template for Qwen3 to ensure compatibility
+        # The default Qwen template may have issues with our data format
+        # Using a simpler, more robust template that works with list of messages
+        self.tokenizer.chat_template = (
+            "{% for message in messages %}"
+            "{% if message.get('role') == 'system' %}"
+            "<|im_start|>system\n{{ message.get('content', '') }}<|im_end|>\n"
+            "{% elif message.get('role') == 'user' %}"
+            "<|im_start|>user\n{{ message.get('content', '') }}<|im_end|>\n"
+            "{% elif message.get('role') == 'assistant' %}"
+            "<|im_start|>assistant\n{{ message.get('content', '') }}<|im_end|>\n"
+            "{% endif %}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "<|im_start|>assistant\n"
+            "{% endif %}"
+        )
+
+        logger.info("Set custom chat template for Qwen3")
+        logger.debug(f"Chat template: {self.tokenizer.chat_template}")
+
         # Set padding token
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -294,15 +298,37 @@ class RAFTTrainer:
     def formatting_func(self, examples: Dict[str, List]) -> List[str]:
         """
         Format examples for training
-        
+
         Args:
-            examples: Batch of examples with 'messages' field
-            
+            examples: Can be either:
+                - A single example dict with 'messages' field (during validation)
+                - A batch of examples with 'messages' field (during training)
+
         Returns:
             List of formatted strings
         """
+        # Handle both single example and batch cases
+        messages_list = examples.get('messages', [])
+
+        # Check if this is a single example (messages is a list of dicts)
+        # or a batch (messages is a list of lists)
+        if messages_list and isinstance(messages_list[0], dict):
+            # Single example case - wrap in a list to process uniformly
+            messages_list = [messages_list]
+
         texts = []
-        for messages in examples['messages']:
+        for messages in messages_list:
+            # Ensure messages is a list of dicts with 'role' and 'content'
+            if not isinstance(messages, list):
+                logger.error(f"Expected messages to be a list, got {type(messages)}: {messages}")
+                raise ValueError(f"messages must be a list, got {type(messages)}")
+
+            # Validate message format
+            for msg in messages:
+                if not isinstance(msg, dict) or 'role' not in msg or 'content' not in msg:
+                    logger.error(f"Invalid message format: {msg}")
+                    raise ValueError(f"Each message must be a dict with 'role' and 'content' keys")
+
             # Apply chat template
             text = self.tokenizer.apply_chat_template(
                 messages,
@@ -310,7 +336,7 @@ class RAFTTrainer:
                 add_generation_prompt=False
             )
             texts.append(text)
-        
+
         return texts
     
     def train(
