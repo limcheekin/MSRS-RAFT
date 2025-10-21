@@ -327,7 +327,6 @@ class RAFTTrainer:
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             formatting_func=self.formatting_func,
-            packing=False,  # Don't pack examples
             callbacks=callbacks or [],
         )
         
@@ -750,7 +749,6 @@ class RAFTTrainer:
             eval_dataset=eval_dataset,
             args=training_args,
             formatting_func=self.formatting_func,
-            packing=False,  # Don't pack examples
             callbacks=callbacks or [],
         )
         
