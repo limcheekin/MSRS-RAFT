@@ -323,10 +323,9 @@ class RAFTTrainer:
         # Initialize trainer
         self.trainer = SFTTrainer(
             model=self.model,
-            tokenizer=self.tokenizer,
+            args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            args=training_args,
             formatting_func=self.formatting_func,
             max_seq_length=self.config.model.max_seq_length,
             packing=False,  # Don't pack examples
