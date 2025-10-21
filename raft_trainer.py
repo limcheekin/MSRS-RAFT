@@ -11,7 +11,6 @@ import json
 
 import torch
 from datasets import Dataset
-from unsloth import FastLanguageModel
 from transformers import TrainingArguments, TrainerCallback
 from trl import SFTTrainer
 import wandb
@@ -57,6 +56,8 @@ class RAFTTrainer:
     def load_model(self):
         """Load model and tokenizer with Unsloth"""
         try:
+            from unsloth import FastLanguageModel
+            
             logger.info(f"Loading model: {self.config.model.model_name}")
             
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
@@ -82,6 +83,8 @@ class RAFTTrainer:
     def _apply_lora(self):
         """Apply LoRA adapters"""
         try:
+            from unsloth import FastLanguageModel
+            
             logger.info("Applying LoRA adapters")
             
             self.model = FastLanguageModel.get_peft_model(
@@ -180,6 +183,23 @@ class RAFTTrainer:
     
     def prepare_training_args(self) -> TrainingArguments:
         """Prepare training arguments"""
+        
+        # Ensure save_steps is a multiple of eval_steps when load_best_model_at_end is True
+        save_steps = self.config.training.save_steps
+        eval_steps = self.config.training.eval_steps
+        
+        if (self.config.training.load_best_model_at_end and 
+            self.config.training.eval_strategy != "no" and
+            save_steps % eval_steps != 0):
+            # Adjust save_steps to be a multiple of eval_steps
+            save_steps = eval_steps * (save_steps // eval_steps)
+            if save_steps == 0:
+                save_steps = eval_steps
+            logger.warning(
+                f"Adjusted save_steps from {self.config.training.save_steps} to {save_steps} "
+                f"to be a multiple of eval_steps ({eval_steps})"
+            )
+        
         args = TrainingArguments(
             output_dir=self.config.training.output_dir,
             num_train_epochs=self.config.training.num_train_epochs,
@@ -204,11 +224,11 @@ class RAFTTrainer:
             
             # Evaluation
             evaluation_strategy=self.config.training.eval_strategy,
-            eval_steps=self.config.training.eval_steps if self.config.training.eval_strategy != "no" else None,
+            eval_steps=eval_steps if self.config.training.eval_strategy != "no" else None,
             
             # Saving
             save_strategy="steps",
-            save_steps=self.config.training.save_steps,
+            save_steps=save_steps,
             save_total_limit=self.config.training.save_total_limit,
             
             # Mixed precision
@@ -489,6 +509,8 @@ class RAFTTrainer:
     def load_model(self):
         """Load model and tokenizer with Unsloth"""
         try:
+            from unsloth import FastLanguageModel
+            
             logger.info(f"Loading model: {self.config.model.model_name}")
             
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
@@ -514,6 +536,8 @@ class RAFTTrainer:
     def _apply_lora(self):
         """Apply LoRA adapters"""
         try:
+            from unsloth import FastLanguageModel
+            
             logger.info("Applying LoRA adapters")
             
             self.model = FastLanguageModel.get_peft_model(

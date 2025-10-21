@@ -67,7 +67,7 @@ class TrainingConfig:
     # Logging and evaluation
     logging_steps: int = 50
     eval_steps: int = 200
-    save_steps: int = 500
+    save_steps: int = 400  # Multiple of eval_steps (200)
     save_total_limit: int = 3
     eval_strategy: str = "steps"
     
@@ -90,6 +90,22 @@ class TrainingConfig:
     dataloader_num_workers: int = 4
     group_by_length: bool = False
     report_to: str = "tensorboard"
+    
+    def __post_init__(self):
+        """Validate training configuration"""
+        # Ensure save_steps is compatible with eval_steps
+        if (self.load_best_model_at_end and 
+            self.eval_strategy != "no" and
+            self.save_steps % self.eval_steps != 0):
+            # Auto-adjust save_steps to be a multiple of eval_steps
+            old_save_steps = self.save_steps
+            self.save_steps = self.eval_steps * (self.save_steps // self.eval_steps)
+            if self.save_steps == 0:
+                self.save_steps = self.eval_steps
+            logging.warning(
+                f"Auto-adjusted save_steps from {old_save_steps} to {self.save_steps} "
+                f"(must be multiple of eval_steps={self.eval_steps})"
+            )
 
 
 @dataclass
@@ -177,7 +193,7 @@ class EvaluationConfig:
 @dataclass
 class SystemConfig:
     """Overall system configuration"""
-    project_name: str = "MSRS-RAFT"
+    project_name: str = "raft-story-qa"
     data_dir: str = "./data"
     cache_dir: str = "./cache"
     log_dir: str = "./logs"
