@@ -2,7 +2,7 @@
 RAFT Trainer Module
 Fine-tunes Qwen3-4B-Instruct with Unsloth QLoRA
 """
-
+import unsloth
 import logging
 import os
 from typing import Dict, List, Optional, Any
