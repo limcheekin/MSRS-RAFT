@@ -256,8 +256,8 @@ class RAFTTrainer:
             save_total_limit=self.config.training.save_total_limit,
             
             # Mixed precision (auto-adjusted for GPU)
-            fp16=False,
-            bf16=True,
+            #fp16=fp16,
+            #bf16=bf16,
             
             # Early stopping
             load_best_model_at_end=self.config.training.load_best_model_at_end if self.config.training.eval_strategy != "no" else False,
@@ -678,8 +678,8 @@ class RAFTTrainer:
             save_total_limit=self.config.training.save_total_limit,
             
             # Mixed precision
-            fp16=self.config.training.fp16,
-            bf16=self.config.training.bf16,
+            #fp16=self.config.training.fp16,
+            #bf16=self.config.training.bf16,
             
             # Early stopping
             load_best_model_at_end=self.config.training.load_best_model_at_end,
