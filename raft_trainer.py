@@ -370,6 +370,7 @@ class RAFTTrainer:
             eval_dataset=eval_dataset,
             formatting_func=self.formatting_func,
             callbacks=callbacks or [],
+            dataset_num_proc=None,  # Disable multiprocessing to avoid pickling errors with tokenizer
         )
         
         logger.info("Starting training...")
