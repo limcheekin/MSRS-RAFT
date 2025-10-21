@@ -276,9 +276,7 @@ class RAFTTrainer:
             # SFT-specific parameters
             max_length=self.config.model.max_seq_length,
             packing=False,
-            # Don't set eos_token and pad_token - let SFTTrainer use tokenizer's defaults
-            eos_token=None,
-            pad_token=None,
+            # Don't specify eos_token and pad_token - let them use their default None values
         )
         
         return args
@@ -333,6 +331,7 @@ class RAFTTrainer:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
+            processing_class=self.tokenizer,  # Pass tokenizer so SFTTrainer can use its tokens
             formatting_func=self.formatting_func,
             callbacks=callbacks or [],
         )
