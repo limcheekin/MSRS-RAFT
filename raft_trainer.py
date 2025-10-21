@@ -200,6 +200,30 @@ class RAFTTrainer:
                 f"to be a multiple of eval_steps ({eval_steps})"
             )
         
+        # Auto-detect GPU capabilities and adjust precision settings
+        fp16 = self.config.training.fp16
+        bf16 = self.config.training.bf16
+        
+        if torch.cuda.is_available():
+            # Get GPU compute capability
+            capability = torch.cuda.get_device_capability()
+            gpu_name = torch.cuda.get_device_name(0)
+            
+            # BF16 requires compute capability >= 8.0 (Ampere+)
+            # T4 is compute capability 7.5, so it doesn't support BF16
+            if bf16 and capability[0] < 8:
+                logger.warning(
+                    f"BF16 not supported on {gpu_name} (compute capability {capability[0]}.{capability[1]}). "
+                    f"Switching to FP16."
+                )
+                bf16 = False
+                fp16 = True
+            
+            # If neither is set and GPU supports it, use FP16
+            if not fp16 and not bf16:
+                logger.info(f"Enabling FP16 for {gpu_name}")
+                fp16 = True
+        
         args = TrainingArguments(
             output_dir=self.config.training.output_dir,
             num_train_epochs=self.config.training.num_train_epochs,
@@ -231,9 +255,9 @@ class RAFTTrainer:
             save_steps=save_steps,
             save_total_limit=self.config.training.save_total_limit,
             
-            # Mixed precision
-            fp16=self.config.training.fp16,
-            bf16=self.config.training.bf16,
+            # Mixed precision (auto-adjusted for GPU)
+            fp16=fp16,
+            bf16=bf16,
             
             # Early stopping
             load_best_model_at_end=self.config.training.load_best_model_at_end if self.config.training.eval_strategy != "no" else False,

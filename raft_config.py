@@ -72,8 +72,8 @@ class TrainingConfig:
     eval_strategy: str = "steps"
     
     # Mixed precision
-    fp16: bool = False
-    bf16: bool = True
+    fp16: bool = True  # Works on T4 and newer GPUs
+    bf16: bool = False  # Requires Ampere+ (A100, A10, etc.)
     
     # Generation
     max_new_tokens: int = 1024
