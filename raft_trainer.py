@@ -327,8 +327,6 @@ class RAFTTrainer:
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             formatting_func=self.formatting_func,
-            max_seq_length=self.config.model.max_seq_length,
-            packing=False,  # Don't pack examples
             callbacks=callbacks or [],
         )
         
