@@ -208,3 +208,31 @@ The changes are fully backward compatible:
 - Old command still works: `python raft_pipeline.py --step dataset` (builds train by default)
 - New command with split: `python raft_pipeline.py --step dataset --split dev`
 
+### Dataset Generation Statistics of build_dev_test.py
+#### raft_dev.jsonl (Code: 20, Actual: 14)
+{
+  "total_examples": 14,
+  "examples_with_oracle": 13,
+  "examples_without_oracle": 1,
+  "oracle_percentage": 0.9285714285714286,
+  "avg_contexts_per_example": 10.5,
+  "avg_oracles_per_example": 9.285714285714286,
+  "avg_distractors_per_example": 1.2142857142857142,
+  "avg_quotes_per_example": 2.0714285714285716,
+  "min_quotes": 1,
+  "max_quotes": 3
+}
+
+#### raft_test.jsonl (Code: 30, Actual: 27)
+{
+  "total_examples": 27,
+  "examples_with_oracle": 24,
+  "examples_without_oracle": 3,
+  "oracle_percentage": 0.8888888888888888,
+  "avg_contexts_per_example": 9.185185185185185,
+  "avg_oracles_per_example": 7.851851851851852,
+  "avg_distractors_per_example": 1.3333333333333333,
+  "avg_quotes_per_example": 2.4444444444444446,
+  "min_quotes": 1,
+  "max_quotes": 3
+}
