@@ -11,8 +11,8 @@ import json
 
 import torch
 from datasets import Dataset
-from transformers import TrainingArguments, TrainerCallback
-from trl import SFTTrainer
+from transformers import TrainerCallback
+from trl import SFTTrainer, SFTConfig
 import wandb
 
 logger = logging.getLogger("RAFT.Trainer")
@@ -181,7 +181,7 @@ class RAFTTrainer:
         
         return train_dataset, eval_dataset
     
-    def prepare_training_args(self) -> TrainingArguments:
+    def prepare_training_args(self) -> SFTConfig:
         """Prepare training arguments"""
         
         # Ensure save_steps is a multiple of eval_steps when load_best_model_at_end is True
@@ -224,57 +224,58 @@ class RAFTTrainer:
                 logger.info(f"Enabling FP16 for {gpu_name}")
                 fp16 = True
         
-        args = TrainingArguments(
+        args = SFTConfig(
             output_dir=self.config.training.output_dir,
             num_train_epochs=self.config.training.num_train_epochs,
             per_device_train_batch_size=self.config.training.per_device_train_batch_size,
             per_device_eval_batch_size=self.config.training.per_device_eval_batch_size,
             gradient_accumulation_steps=self.config.training.gradient_accumulation_steps,
             gradient_checkpointing=True,
-            
+
             # Optimizer
             optim=self.config.training.optim,
             learning_rate=self.config.training.learning_rate,
             weight_decay=self.config.training.weight_decay,
             warmup_ratio=self.config.training.warmup_ratio,
             max_grad_norm=self.config.training.max_grad_norm,
-            
+
             # Scheduler
             lr_scheduler_type=self.config.training.lr_scheduler_type,
-            
+
             # Logging
             logging_steps=self.config.training.logging_steps,
             logging_dir=os.path.join(self.config.training.output_dir, "logs"),
-            
+
             # Evaluation
             eval_strategy=self.config.training.eval_strategy,
             eval_steps=eval_steps if self.config.training.eval_strategy != "no" else None,
-            
+
             # Saving
             save_strategy="steps",
             save_steps=save_steps,
             save_total_limit=self.config.training.save_total_limit,
-            
+
             # Mixed precision (auto-adjusted for GPU)
             fp16=fp16,
             bf16=bf16,
-            
+
             # Early stopping
             load_best_model_at_end=self.config.training.load_best_model_at_end if self.config.training.eval_strategy != "no" else False,
             metric_for_best_model=self.config.training.metric_for_best_model,
             greater_is_better=self.config.training.greater_is_better,
-            
+
             # Misc
             seed=self.config.system.seed,
             dataloader_num_workers=self.config.training.dataloader_num_workers,
             group_by_length=self.config.training.group_by_length,
             report_to=self.config.training.report_to if self.config.system.use_wandb else "none",
-            
+
             # Disable things that cause issues
             ddp_find_unused_parameters=False if torch.cuda.device_count() > 1 else None,
 
-            max_seq_length=self.config.model.max_seq_length,
-            packing=False, 
+            # SFT-specific parameters
+            max_length=self.config.model.max_seq_length,
+            packing=False,
         )
         
         return args
