@@ -284,7 +284,7 @@ class RAFTTrainer:
             max_length=self.config.model.max_seq_length,
             packing=False,
             dataset_text_field="text",  # We pre-format the dataset with a "text" field
-            dataset_num_proc=1,  # Disable multiprocessing to avoid pickling errors with tokenizer
+            # dataset_num_proc=1,  # Disable multiprocessing to avoid pickling errors with tokenizer
             # Explicitly set tokens from tokenizer to avoid validation errors
             eos_token=self.tokenizer.eos_token if self.tokenizer.eos_token else None,
             pad_token=self.tokenizer.pad_token if self.tokenizer.pad_token else None,
