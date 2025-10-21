@@ -283,7 +283,7 @@ class RAFTTrainer:
             # SFT-specific parameters
             max_length=self.config.model.max_seq_length,
             packing=False,
-            dataset_text_field=None,  # We use formatting_func instead
+            dataset_text_field="text",  # We pre-format the dataset with a "text" field
             dataset_num_proc=1,  # Disable multiprocessing to avoid pickling errors with tokenizer
             # Explicitly set tokens from tokenizer to avoid validation errors
             eos_token=self.tokenizer.eos_token if self.tokenizer.eos_token else None,
@@ -348,7 +348,7 @@ class RAFTTrainer:
     ):
         """
         Train the model
-        
+
         Args:
             train_dataset: Training dataset
             eval_dataset: Optional evaluation dataset
@@ -356,20 +356,44 @@ class RAFTTrainer:
         """
         if self.model is None:
             raise ValueError("Model not loaded. Call load_model() first.")
-        
+
         logger.info("Preparing trainer...")
-        
+
+        # Pre-format datasets to avoid pickling issues with tokenizer in formatting_func
+        logger.info("Pre-formatting training dataset...")
+        train_dataset = train_dataset.map(
+            lambda x: {"text": self.tokenizer.apply_chat_template(
+                x["messages"],
+                tokenize=False,
+                add_generation_prompt=False
+            )},
+            remove_columns=train_dataset.column_names,
+            desc="Formatting train dataset"
+        )
+
+        if eval_dataset is not None:
+            logger.info("Pre-formatting evaluation dataset...")
+            eval_dataset = eval_dataset.map(
+                lambda x: {"text": self.tokenizer.apply_chat_template(
+                    x["messages"],
+                    tokenize=False,
+                    add_generation_prompt=False
+                )},
+                remove_columns=eval_dataset.column_names,
+                desc="Formatting eval dataset"
+            )
+
         # Prepare training arguments
         training_args = self.prepare_training_args()
-        
-        # Initialize trainer
+
+        # Initialize trainer without formatting_func since we pre-formatted
         self.trainer = SFTTrainer(
             model=self.model,
             processing_class=self.tokenizer,  # Pass tokenizer as processing_class for TRL v0.23.0
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            formatting_func=self.formatting_func,
+            dataset_text_field="text",  # Use the pre-formatted text field
             callbacks=callbacks or [],
         )
         
