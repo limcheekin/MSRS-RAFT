@@ -3,6 +3,9 @@ RAFT Trainer Module
 Fine-tunes Qwen3-4B-Instruct with Unsloth QLoRA
 """
 
+# IMPORTANT: Import unsloth BEFORE trl to avoid token patching issues
+# See: https://github.com/unslothai/unsloth/issues/2797
+from unsloth import FastLanguageModel
 import logging
 import os
 from typing import Dict, List, Optional, Any
@@ -12,9 +15,6 @@ import json
 import torch
 from datasets import Dataset
 from transformers import TrainerCallback
-# IMPORTANT: Import unsloth BEFORE trl to avoid token patching issues
-# See: https://github.com/unslothai/unsloth/issues/2797
-from unsloth import FastLanguageModel
 from trl import SFTTrainer, SFTConfig
 import wandb
 
