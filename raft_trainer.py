@@ -2,7 +2,7 @@
 RAFT Trainer Module
 Fine-tunes Qwen3-4B-Instruct with Unsloth QLoRA
 """
-import unsloth
+
 import logging
 import os
 from typing import Dict, List, Optional, Any
@@ -327,6 +327,8 @@ class RAFTTrainer:
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             formatting_func=self.formatting_func,
+            max_seq_length=self.config.model.max_seq_length,
+            packing=False,  # Don't pack examples
             callbacks=callbacks or [],
         )
         
@@ -645,6 +647,58 @@ class RAFTTrainer:
         
         return train_dataset, eval_dataset
     
+    def prepare_training_args(self) -> TrainingArguments:
+        """Prepare training arguments"""
+        args = TrainingArguments(
+            output_dir=self.config.training.output_dir,
+            num_train_epochs=self.config.training.num_train_epochs,
+            per_device_train_batch_size=self.config.training.per_device_train_batch_size,
+            per_device_eval_batch_size=self.config.training.per_device_eval_batch_size,
+            gradient_accumulation_steps=self.config.training.gradient_accumulation_steps,
+            gradient_checkpointing=True,
+            
+            # Optimizer
+            optim=self.config.training.optim,
+            learning_rate=self.config.training.learning_rate,
+            weight_decay=self.config.training.weight_decay,
+            warmup_ratio=self.config.training.warmup_ratio,
+            max_grad_norm=self.config.training.max_grad_norm,
+            
+            # Scheduler
+            lr_scheduler_type=self.config.training.lr_scheduler_type,
+            
+            # Logging
+            logging_steps=self.config.training.logging_steps,
+            logging_dir=os.path.join(self.config.training.output_dir, "logs"),
+            
+            # Evaluation
+            eval_strategy=self.config.training.eval_strategy,
+            eval_steps=self.config.training.eval_steps,
+            
+            # Saving
+            save_steps=self.config.training.save_steps,
+            save_total_limit=self.config.training.save_total_limit,
+            
+            # Mixed precision
+            fp16=self.config.training.fp16,
+            bf16=self.config.training.bf16,
+            
+            # Early stopping
+            load_best_model_at_end=self.config.training.load_best_model_at_end,
+            metric_for_best_model=self.config.training.metric_for_best_model,
+            greater_is_better=self.config.training.greater_is_better,
+            
+            # Misc
+            seed=self.config.system.seed,
+            dataloader_num_workers=self.config.training.dataloader_num_workers,
+            group_by_length=self.config.training.group_by_length,
+            report_to=self.config.training.report_to if self.config.system.use_wandb else "none",
+            
+            # Disable things that cause issues
+            ddp_find_unused_parameters=False if torch.cuda.device_count() > 1 else None,
+        )
+        
+        return args
     
     def formatting_func(self, examples: Dict[str, List]) -> List[str]:
         """
@@ -693,10 +747,13 @@ class RAFTTrainer:
         # Initialize trainer
         self.trainer = SFTTrainer(
             model=self.model,
+            tokenizer=self.tokenizer,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             args=training_args,
             formatting_func=self.formatting_func,
+            max_seq_length=self.config.model.max_seq_length,
+            packing=False,  # Don't pack examples
             callbacks=callbacks or [],
         )
         
