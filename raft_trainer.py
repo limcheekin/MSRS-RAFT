@@ -280,8 +280,10 @@ class RAFTTrainer:
             # SFT-specific parameters
             max_length=self.config.model.max_seq_length,
             packing=False,
-            # Set tokens based on tokenizer - use actual values if available, otherwise don't set
             dataset_text_field=None,  # We use formatting_func instead
+            # Explicitly set tokens from tokenizer to avoid validation errors
+            eos_token=self.tokenizer.eos_token if self.tokenizer.eos_token else None,
+            pad_token=self.tokenizer.pad_token if self.tokenizer.pad_token else None,
         )
         
         return args
@@ -333,7 +335,7 @@ class RAFTTrainer:
         # Initialize trainer
         self.trainer = SFTTrainer(
             model=self.model,
-            tokenizer=self.tokenizer,  # Use tokenizer parameter instead of processing_class
+            processing_class=self.tokenizer,  # Pass tokenizer as processing_class for TRL v0.23.0
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
