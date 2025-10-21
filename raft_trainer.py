@@ -272,6 +272,9 @@ class RAFTTrainer:
             
             # Disable things that cause issues
             ddp_find_unused_parameters=False if torch.cuda.device_count() > 1 else None,
+
+            max_seq_length=self.config.model.max_seq_length,
+            packing=False, 
         )
         
         return args
