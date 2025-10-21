@@ -284,6 +284,7 @@ class RAFTTrainer:
             max_length=self.config.model.max_seq_length,
             packing=False,
             dataset_text_field=None,  # We use formatting_func instead
+            dataset_num_proc=1,  # Disable multiprocessing to avoid pickling errors with tokenizer
             # Explicitly set tokens from tokenizer to avoid validation errors
             eos_token=self.tokenizer.eos_token if self.tokenizer.eos_token else None,
             pad_token=self.tokenizer.pad_token if self.tokenizer.pad_token else None,
@@ -370,7 +371,6 @@ class RAFTTrainer:
             eval_dataset=eval_dataset,
             formatting_func=self.formatting_func,
             callbacks=callbacks or [],
-            dataset_num_proc=1,  # Use single process to avoid pickling errors with tokenizer
         )
         
         logger.info("Starting training...")
