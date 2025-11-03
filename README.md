@@ -111,8 +111,8 @@ RAFT addresses these challenges by training models to explicitly cite sources an
 ### Step 1: Clone Repository
 
 ```bash
-git clone <your-repo-url>
-cd raft-story-qa
+git clone https://github.com/limcheekin/MSRS-RAFT
+cd MSRS-RAFT
 ```
 
 ### Step 2: Create Environment
@@ -438,11 +438,11 @@ If you use this implementation, please cite:
   year={2024}
 }
 
-@article{msrs2024,
-  title={MSRS: Training Large Multimodal Models as Unified Information Retrievers Across Modalities},
-  author={Yale NLP Group},
+@article{msrs2025,
+  title={MSRS: Evaluating Multi-Source Retrieval-Augmented Generation},
+  author={Rohan Phanse, Yijie Zhou, Kejian Shi, Wencai Zhang, Yixin Liu, Yilun Zhao, Arman Cohan},
   journal={arXiv preprint arXiv:2508.20867},
-  year={2024}
+  year={2025}
 }
 ```
 
@@ -461,6 +461,7 @@ Contributions welcome! Please:
 ## 🙏 Acknowledgments
 
 - **RAFT Paper**: [Zhang et al., 2024](https://arxiv.org/abs/2403.10131)
+- **MSRS Paper**: [Rohan Phanse et al., 2025](https://arxiv.org/abs/2508.20867)
 - **MSRS Dataset**: [Yale NLP Group](https://github.com/yale-nlp/MSRS)
 - **Unsloth**: [Efficient LLM fine-tuning](https://github.com/unslothai/unsloth)
 - **Qwen3**: [Alibaba Cloud](https://huggingface.co/Qwen)
