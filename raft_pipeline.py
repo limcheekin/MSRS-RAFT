@@ -282,7 +282,8 @@ class RAFTPipeline:
         test_split: str = "test",
         model_path: Optional[str] = None,
         output_path: Optional[str] = None,
-        openai_api_key: Optional[str] = None
+        openai_api_key: Optional[str] = None,
+        max_examples: Optional[int] = None
     ) -> Dict[str, Any]:
         """Step 6: Evaluate the model"""
         self.logger.info("\n" + "="*60)
@@ -323,7 +324,8 @@ class RAFTPipeline:
         self.logger.info("Preparing test examples...")
         test_examples = prepare_examples_from_loader(
             self.data_loader,
-            split=test_split
+            split=test_split,
+            max_examples=max_examples
         )
         
         # Convert to evaluation format
@@ -563,7 +565,11 @@ def main():
                 logger.info("Index not found, building first...")
                 pipeline.step2_build_index()
             
-            pipeline.step6_evaluate(model_path=model_path)
+            pipeline.step6_evaluate(
+                model_path=model_path,
+                openai_api_key=args.openai_api_key,
+                max_examples=args.eval_max_examples
+            )
         
         pipeline.logger.info("\n✓ All requested steps completed successfully!")
         

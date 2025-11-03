@@ -683,7 +683,8 @@ Remember: Always cite your sources with verbatim quotes."""
 
 def prepare_examples_from_loader(
     data_loader,
-    split: str = "train"
+    split: str = "train",
+    max_examples: Optional[int] = None
 ) -> List[Dict]:
     """
     Prepare examples from data loader for RAFT building
@@ -691,12 +692,13 @@ def prepare_examples_from_loader(
     Args:
         data_loader: MSRSDataLoader instance with loaded corpus
         split: Dataset split to use
-        
+        max_examples: Maximum number of examples to be prepared
+
     Returns:
         List of example dicts ready for RAFT building
     """
     # Parse examples
-    qa_examples = data_loader.parse_examples(split=split)
+    qa_examples = data_loader.parse_examples(split=split, max_examples=max_examples)
     
     prepared = []
     for qa_example in qa_examples:
