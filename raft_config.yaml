@@ -1,5 +1,5 @@
 model:
-  model_name: "Qwen/Qwen3-4B-Instruct-2507"
+  model_name: "Qwen/Qwen3-4B-Base"
   max_seq_length: 4096
   lora_r: 32
   lora_alpha: 64
